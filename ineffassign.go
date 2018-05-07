@@ -1,4 +1,4 @@
-package main
+package ineffassign
 
 import (
 	"flag"
@@ -14,30 +14,26 @@ import (
 
 const invalidArgumentExitCode = 3
 
-var dontRecurseFlag = flag.Bool("n", false, "don't recursively check paths")
+var dontRecurseFlag = flag.Bool("ineffassign.n", false, "don't recursively check paths")
 
-func main() {
-	flag.Parse()
+type Issue struct {
+	Pos       token.Position
+	IdentName string
+}
 
-	if len(flag.Args()) == 0 {
-		fmt.Println("missing argument: filepath")
-		os.Exit(invalidArgumentExitCode)
-	}
-
-	lintFailed := false
-	for _, path := range flag.Args() {
-		root, err := filepath.Abs(path)
-		if err != nil {
-			fmt.Printf("Error finding absolute path: %s", err)
-			os.Exit(invalidArgumentExitCode)
-		}
-		if walkPath(root) {
-			lintFailed = true
+func Run(files []string) []Issue {
+	var issues []Issue
+	for _, path := range files {
+		fset, _, ineff := checkPath(path)
+		for _, id := range ineff {
+			issues = append(issues, Issue{
+				Pos:       fset.Position(id.Pos()),
+				IdentName: id.Name,
+			})
 		}
 	}
-	if lintFailed {
-		os.Exit(1)
-	}
+
+	return issues
 }
 
 func walkPath(root string) bool {
